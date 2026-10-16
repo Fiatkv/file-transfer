@@ -2,11 +2,12 @@ from fastapi import (FastAPI, File, UploadFile, HTTPException, status, Response,
 from fastapi.responses import (FileResponse)
 
 from utils.constants import (PORT)
-from utils.websocket import (manager)
+from utils.websocket import (ConnectionManager)
 from utils.storage import (list_shared_files, save_upload_file, get_base_path, delete_shared_file)
 from utils.network import(get_local_ip, gen_qr_bytes)
 
 app = FastAPI()
+manager = ConnectionManager()
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:

@@ -19,5 +19,3 @@ class ConnectionManager:
                 await connection.send_text(message)
             except Exception:
                 pass
-
-manager = ConnectionManager
