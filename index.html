@@ -5,16 +5,85 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Local Drop</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
-    #drop-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 40px; text-align: center; background: #fafafa; cursor: pointer; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #333;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    h2 { margin: 0; }
+    .qr-btn {
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .qr-btn:hover { background: #e2e2e2; }
+    
+    #qr-container {
+      display: none;
+      text-align: center;
+      padding: 16px;
+      margin-bottom: 20px;
+      background: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 8px;
+    }
+    #qr-container img {
+      width: 160px;
+      height: 160px;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+    }
+    #qr-container p {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #666;
+    }
+
+    #drop-zone {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      background: #fafafa;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
     #drop-zone.hover { border-color: #0070f3; background: #f0f7ff; }
     ul { list-style: none; padding: 0; }
-    li { padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
-    a { color: #0070f3; text-decoration: none; }
+    li {
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    a { color: #0070f3; text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h2>Local AirDrop</h2>
+  <div class="header">
+    <h2>Local AirDrop</h2>
+    <button class="qr-btn" onclick="toggleQR()">📱 Connect Mobile</button>
+  </div>
+
+  <div id="qr-container">
+    <p>Scan with phone camera to connect:</p>
+    <img src="/qr" alt="QR Code">
+  </div>
   
   <div id="drop-zone">
     <p>Drag & drop files here or click to select</p>
@@ -28,6 +97,12 @@
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
     const fileList = document.getElementById('file-list');
+    const qrContainer = document.getElementById('qr-container');
+
+    function toggleQR() {
+      const isHidden = qrContainer.style.display === 'none' || qrContainer.style.display === '';
+      qrContainer.style.display = isHidden ? 'block' : 'none';
+    }
 
     dropZone.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', () => uploadFile(fileInput.files[0]));
