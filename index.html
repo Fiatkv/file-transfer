@@ -30,6 +30,22 @@
       transition: background 0.2s;
     }
     .qr-btn:hover { background: #e2e2e2; }
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .delete-btn {
+      color: #e53e3e;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+    }
+    .delete-btn:hover {
+      text-decoration: underline;
+    }
     
     #qr-container {
       display: none;
@@ -124,12 +140,29 @@
       loadFiles();
     }
 
+    async function deleteFile(filename) {
+      if (!confirm(`Delete ${filename}?`)) return;
+
+      const res = await fetch(`/files/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadFiles();
+      } else {
+        alert('Failed to delete file.');
+      }
+    }
+
     async function loadFiles() {
       const res = await fetch('/files');
       const data = await res.json();
-      fileList.innerHTML = data.files.map(name => 
-        `<li><span>${name}</span><a href="/files/${encodeURIComponent(name)}" download>Download</a></li>`
-      ).join('');
+      fileList.innerHTML = data.files.map(name => `
+        <li>
+          <span>${name}</span>
+          <div class="actions">
+            <a href="/files/${encodeURIComponent(name)}" download>Download</a>
+            <button class="delete-btn" onclick="deleteFile('${name.replace(/'/g, "\\'")}')">Delete</button>
+          </div>
+        </li>
+      `).join('');
     }
 
     loadFiles();

@@ -12,7 +12,7 @@ def get_base_path(filename: str) -> Path:
     return UPLOAD_DIR / base_name
 
 def list_shared_files() -> list[str]:
-    """Returns a list of all filenames stored in the shared_files directory."""
+    """Returns a list of all filenames stored in the shared files directory."""
     return [file.name for file in UPLOAD_DIR.iterdir() if file.is_file()]
 
 def save_upload_file(file: UploadFile) -> str:
@@ -21,3 +21,11 @@ def save_upload_file(file: UploadFile) -> str:
     with target_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     return target_path.name
+
+def delete_shared_file(filename: str) -> bool:
+    """Deletes a file from the shared files directory (if it exists)."""
+    file_path = get_base_path(filename)
+    if file_path.exists() and file_path.is_file():
+        file_path.unlink()
+        return True
+    return False
