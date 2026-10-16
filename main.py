@@ -10,8 +10,8 @@ UPLOAD_DIR = Path(UPLOAD_DIR_PATH)
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 @app.get("/")
-def home() -> dict:
-    return {"Hello": "World"}
+def read_index() -> dict:
+    return FileResponse("index.html")
 
 @app.get("/files")
 async def list_files() -> dict:

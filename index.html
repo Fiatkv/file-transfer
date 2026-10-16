@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Drop</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+    #drop-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 40px; text-align: center; background: #fafafa; cursor: pointer; }
+    #drop-zone.hover { border-color: #0070f3; background: #f0f7ff; }
+    ul { list-style: none; padding: 0; }
+    li { padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+    a { color: #0070f3; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h2>Local AirDrop</h2>
+  
+  <div id="drop-zone">
+    <p>Drag & drop files here or click to select</p>
+    <input type="file" id="file-input" style="display: none;">
+  </div>
+
+  <h3>Shared Files</h3>
+  <ul id="file-list"></ul>
+
+  <script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const fileList = document.getElementById('file-list');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => uploadFile(fileInput.files[0]));
+
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('hover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('hover');
+      if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+    });
+
+    async function uploadFile(file) {
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('file', file);
+
+      await fetch('/files', { method: 'POST', body: formData });
+      loadFiles();
+    }
+
+    async function loadFiles() {
+      const res = await fetch('/files');
+      const data = await res.json();
+      fileList.innerHTML = data.files.map(name => 
+        `<li><span>${name}</span><a href="/files/${encodeURIComponent(name)}" download>Download</a></li>`
+      ).join('');
+    }
+
+    loadFiles();
+  </script>
+</body>
+</html>
