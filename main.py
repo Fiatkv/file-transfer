@@ -1,8 +1,8 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, status, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, UploadFile, HTTPException, status, Response, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from utils.constants import PORT
+from utils.constants import PORT, DEFAULT_SENDER
 from utils.websocket import ConnectionManager
 from utils.storage import (list_shared_files, save_upload_file, get_base_path, delete_shared_file, get_shared_text_history,
                            add_shared_text, clear_shared_text_history, delete_shared_text)
@@ -76,12 +76,15 @@ async def read_text_history() -> dict:
     return {"history": get_shared_text_history()}
 
 @app.post("/text")
-async def create_text(payload: TextPayload) -> dict:
+async def create_text(payload: TextPayload, request: Request) -> dict:
     """Adds a text snippet."""
     if not payload.text.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="text cannot be empty")
 
-    add_shared_text(payload.text)
+    client_ip = request.client.host if request.client else "Local"
+    sender_name = payload.sender if payload.sender != DEFAULT_SENDER else client_ip
+
+    add_shared_text(payload.text, sender_name)
     await manager.broadcast("text_added")
     return {"status": "success"}
 

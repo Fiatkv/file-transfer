@@ -2,6 +2,7 @@ const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 const fileList = document.getElementById('file-list');
 const qrContainer = document.getElementById('qr-container');
+const deviceNameInput = document.getElementById('device-name');
 
 let showHistory = false;
 
@@ -71,12 +72,13 @@ async function loadText() {
 
   clearAllBtn.style.display = 'inline-block';
 
-  // 1. Render latest snippet (passes button element 'this' to copySnippet)
+  // 1. Render latest snippet with sender name
   const latest = data.history[0];
+  const latestSender = latest.sender || 'Unknown Device';
   latestContainer.innerHTML = `
     <div class="text-card primary-card">
       <div class="text-card-header">
-        <span>Latest • ${latest.timestamp}</span>
+        <span><strong>${escapeHtml(latestSender)}</strong> • ${latest.timestamp}</span>
       </div>
       <div class="text-card-body">${escapeHtml(latest.text)}</div>
       <div class="text-card-actions">
@@ -86,7 +88,7 @@ async function loadText() {
     </div>
   `;
 
-  // 2. Render older history entries
+  // 2. Render older history entries with sender names
   const olderEntries = data.history.slice(1);
   if (olderEntries.length > 0) {
     toggleBtn.style.display = 'inline-block';
@@ -95,18 +97,21 @@ async function loadText() {
       : `📜 View History (${olderEntries.length})`;
 
     historyContainer.style.display = showHistory ? 'flex' : 'none';
-    historyContainer.innerHTML = olderEntries.map(item => `
-      <div class="text-card">
-        <div class="text-card-header">
-          <span>Shared at ${item.timestamp}</span>
+    historyContainer.innerHTML = olderEntries.map(item => {
+      const sender = item.sender || 'Unknown Device';
+      return `
+        <div class="text-card">
+          <div class="text-card-header">
+            <span><strong>${escapeHtml(sender)}</strong> • ${item.timestamp}</span>
+          </div>
+          <div class="text-card-body">${escapeHtml(item.text)}</div>
+          <div class="text-card-actions">
+            <button class="btn secondary" onclick="copySnippet(this)">📋 Copy</button>
+            <button class="delete-btn" onclick="deleteSnippet('${item.id}')">Delete</button>
+          </div>
         </div>
-        <div class="text-card-body">${escapeHtml(item.text)}</div>
-        <div class="text-card-actions">
-          <button class="btn secondary" onclick="copySnippet(this)">📋 Copy</button>
-          <button class="delete-btn" onclick="deleteSnippet('${item.id}')">Delete</button>
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   } else {
     toggleBtn.style.display = 'none';
     historyContainer.style.display = 'none';
@@ -123,6 +128,51 @@ function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+// Auto-detect or retrieve custom device nickname
+function getDeviceName() {
+  let name = localStorage.getItem('device_nickname');
+  if (name) return name;
+
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua)) name = "iPhone";
+  else if (/Android/.test(ua)) name = "Android Device";
+  else if (/Macintosh/.test(ua)) name = "Mac";
+  else if (/Windows/.test(ua)) name = "Windows PC";
+  else name = "Unknown Device";
+
+  return name;
+}
+
+function getDeviceName() {
+  let name = localStorage.getItem('device_nickname');
+  if (name) return name;
+
+  // Auto-detect browser/OS if no custom nickname is set
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua)) name = "iPhone";
+  else if (/Android/.test(ua)) name = "Android";
+  else if (/Macintosh/.test(ua)) name = "Mac";
+  else if (/Windows/.test(ua)) name = "Windows PC";
+  else name = "Desktop";
+
+  return name;
+}
+
+function initDeviceName() {
+  const name = getDeviceName();
+  deviceNameInput.value = name;
+}
+
+function saveDeviceName() {
+  const newName = deviceNameInput.value.trim();
+  if (newName) {
+    localStorage.setItem('device_nickname', newName);
+  } else {
+    localStorage.removeItem('device_nickname');
+    initDeviceName();
+  }
+}
+
 async function saveText() {
   const textarea = document.getElementById('shared-text');
   if (!textarea.value.trim()) return;
@@ -130,7 +180,10 @@ async function saveText() {
   const res = await fetch('/text', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: textarea.value })
+    body: JSON.stringify({ 
+      text: textarea.value,
+      sender: getDeviceName()
+    })
   });
 
   if (res.ok) {
@@ -228,3 +281,4 @@ function connectWebSocket() {
 loadFiles();
 loadText();
 connectWebSocket();
+initDeviceName();

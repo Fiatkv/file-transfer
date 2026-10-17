@@ -5,8 +5,7 @@ from pathlib import Path
 from fastapi import UploadFile
 from datetime import datetime
 
-
-from utils.constants import (DATA_DIR_PATH, UPLOAD_DIR_PATH, SHARED_TEXT_FILENAME)
+from utils.constants import (DATA_DIR_PATH, UPLOAD_DIR_PATH, SHARED_TEXT_FILENAME, DEFAULT_SENDER)
 
 UPLOAD_DIR = Path(UPLOAD_DIR_PATH)
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -49,13 +48,14 @@ def get_shared_text_history() -> list[dict]:
             return []
     return []
 
-def add_shared_text(text: str) -> dict:
-    """Appends a new text snippet to history, capping the list at 20 items"""
+def add_shared_text(text: str, sender: str = DEFAULT_SENDER) -> dict:
+    """Appends a new text snippet with sender metadata to history."""
     history = get_shared_text_history()
 
     new_entry = {
         "id": str(uuid.uuid4())[:8],
         "text": text,
+        "sender": sender,
         "timestamp": datetime.now().strftime("%H:%M"),
     }
 

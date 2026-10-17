@@ -8,7 +8,20 @@
 </head>
 <body>
   <div class="header">
-    <h2>Local AirDrop</h2>
+    <div class="title-group">
+      <h2>Local AirDrop</h2>
+      <div class="device-name-container">
+        <input 
+          type="text" 
+          id="device-name" 
+          class="device-input" 
+          placeholder="Device name..." 
+          onchange="saveDeviceName()"
+          title="Click to edit device name"
+        >
+        <span class="edit-icon" onclick="document.getElementById('device-name').focus()">✏️</span>
+      </div>
+    </div>
     <button class="qr-btn" onclick="toggleQR()">📱 Connect Mobile</button>
   </div>
 
