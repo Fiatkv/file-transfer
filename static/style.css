@@ -114,6 +114,82 @@ textarea {
   margin-top: 8px;
 }
 
+.text-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.text-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.text-card-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #718096;
+  margin-bottom: 6px;
+}
+
+.text-card-body {
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #2d3748;
+}
+
+.text-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.box-header h3 {
+  margin: 0;
+}
+
+#latest-snippet {
+  margin-top: 14px;
+}
+
+.text-card.primary-card {
+  border-left: 4px solid #0070f3;
+  background: #ffffff;
+}
+
+.history-toggle-container {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.toggle-btn {
+  background: none;
+  border: none;
+  color: #0070f3;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.toggle-btn:hover {
+  text-decoration: underline;
+}
+
 .btn {
   background: #0070f3;
   color: white;

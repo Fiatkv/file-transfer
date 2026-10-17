@@ -2,7 +2,8 @@ const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 const fileList = document.getElementById('file-list');
 const qrContainer = document.getElementById('qr-container');
-const sharedTextarea = document.getElementById('shared-text');
+
+let showHistory = false;
 
 function toggleQR() {
   const isHidden = qrContainer.style.display === 'none' || qrContainer.style.display === '';
@@ -54,41 +55,150 @@ async function loadFiles() {
 async function loadText() {
   const res = await fetch('/text');
   const data = await res.json();
-  sharedTextarea.value = data.text;
+  
+  const latestContainer = document.getElementById('latest-snippet');
+  const historyContainer = document.getElementById('text-history');
+  const toggleBtn = document.getElementById('toggle-history-btn');
+  const clearAllBtn = document.getElementById('clear-all-text-btn');
+
+  if (!data.history || data.history.length === 0) {
+    latestContainer.innerHTML = '<p style="color: #888; font-size: 13px; margin-top: 10px;">No shared text yet.</p>';
+    historyContainer.innerHTML = '';
+    toggleBtn.style.display = 'none';
+    clearAllBtn.style.display = 'none';
+    return;
+  }
+
+  clearAllBtn.style.display = 'inline-block';
+
+  // 1. Render latest snippet (passes button element 'this' to copySnippet)
+  const latest = data.history[0];
+  latestContainer.innerHTML = `
+    <div class="text-card primary-card">
+      <div class="text-card-header">
+        <span>Latest • ${latest.timestamp}</span>
+      </div>
+      <div class="text-card-body">${escapeHtml(latest.text)}</div>
+      <div class="text-card-actions">
+        <button class="btn secondary" onclick="copySnippet(this)">📋 Copy</button>
+        <button class="delete-btn" onclick="deleteSnippet('${latest.id}')">Delete</button>
+      </div>
+    </div>
+  `;
+
+  // 2. Render older history entries
+  const olderEntries = data.history.slice(1);
+  if (olderEntries.length > 0) {
+    toggleBtn.style.display = 'inline-block';
+    toggleBtn.textContent = showHistory 
+      ? `📜 Hide History` 
+      : `📜 View History (${olderEntries.length})`;
+
+    historyContainer.style.display = showHistory ? 'flex' : 'none';
+    historyContainer.innerHTML = olderEntries.map(item => `
+      <div class="text-card">
+        <div class="text-card-header">
+          <span>Shared at ${item.timestamp}</span>
+        </div>
+        <div class="text-card-body">${escapeHtml(item.text)}</div>
+        <div class="text-card-actions">
+          <button class="btn secondary" onclick="copySnippet(this)">📋 Copy</button>
+          <button class="delete-btn" onclick="deleteSnippet('${item.id}')">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    toggleBtn.style.display = 'none';
+    historyContainer.style.display = 'none';
+    historyContainer.innerHTML = '';
+  }
+}
+
+function toggleHistory() {
+  showHistory = !showHistory;
+  loadText();
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 async function saveText() {
-  await fetch('/text', {
+  const textarea = document.getElementById('shared-text');
+  if (!textarea.value.trim()) return;
+
+  const res = await fetch('/text', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: sharedTextarea.value })
+    body: JSON.stringify({ text: textarea.value })
   });
+
+  if (res.ok) {
+    textarea.value = '';
+    loadText();
+  }
 }
 
-async function copyText() {
-  if (!sharedTextarea.value) return;
-
-  if (navigator.clipboard && window.isSecureContext) {
-    try {
-      await navigator.clipboard.writeText(sharedTextarea.value);
-      alert('Copied to clipboard!');
-      return;
-    } catch (err) {
-      console.warn('Clipboard API failed, running fallback...', err);
-    }
+async function deleteSnippet(id) {
+  const res = await fetch(`/text/${id}`, { method: 'DELETE' });
+  if (res.ok) {
+    loadText();
   }
+}
 
-  sharedTextarea.select();
-  sharedTextarea.setSelectionRange(0, 99999);
+async function clearAllSnippets() {
+  if (!confirm("Clear all shared text entries?")) return;
+
+  const res = await fetch('/text', { method: 'DELETE' });
+  if (res.ok) {
+    loadText();
+  }
+}
+
+// Synchronous DOM read and mobile copy handler
+function copySnippet(btnElement) {
+  const card = btnElement.closest('.text-card');
+  if (!card) return;
+
+  const text = card.querySelector('.text-card-body').innerText;
+  if (!text) return;
+
+  // Try modern Clipboard API if supported and HTTPS/localhost
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      alert('Copied to clipboard!');
+    }).catch(() => {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  // Position offscreen without hiding display to keep iOS selection active
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-9999px';
+  textArea.style.top = '0';
+  document.body.appendChild(textArea);
+  
+  textArea.focus();
+  textArea.select();
+  textArea.setSelectionRange(0, 99999); // Critical for iOS Safari
+
   try {
     const successful = document.execCommand('copy');
     if (successful) {
       alert('Copied to clipboard!');
     } else {
-      alert('Failed to copy automatically. Text is selected for manual copy.');
+      window.prompt('Copy text manually:', text);
     }
   } catch (err) {
-    alert('Copy command not supported on this browser.');
+    window.prompt('Copy text manually:', text);
+  } finally {
+    document.body.removeChild(textArea);
   }
 }
 
@@ -104,7 +214,7 @@ function connectWebSocket() {
     const msg = event.data;
     if (msg === 'file_uploaded' || msg === 'file_deleted' || msg === 'refresh') {
       loadFiles();
-    } else if (msg === 'text_updated') {
+    } else if (msg === 'text_added' || msg === 'text_deleted' || msg === 'text_updated') {
       loadText();
     }
   };

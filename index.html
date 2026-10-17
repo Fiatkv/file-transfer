@@ -23,12 +23,23 @@
   </div>
 
   <div class="text-share-box">
-    <h3>Shared Clipboard</h3>
-    <textarea id="shared-text" placeholder="Paste links, notes, or text here to share across devices..."></textarea>
-    <div class="text-actions">
-      <button class="btn" onclick="saveText()">📤 Share Text</button>
-      <button class="btn secondary" onclick="copyText()">📋 Copy to Clipboard</button>
+    <div class="box-header">
+      <h3>Shared Clipboard</h3>
+      <button id="clear-all-text-btn" class="delete-btn" onclick="clearAllSnippets()" style="display: none;">Clear All</button>
     </div>
+    
+    <textarea id="shared-text" placeholder="Paste links, notes, or text here to share..."></textarea>
+    
+    <div class="text-actions">
+      <button class="btn" onclick="saveText()">📤 Share Snippet</button>
+      <button id="toggle-history-btn" class="toggle-btn" onclick="toggleHistory()" style="display: none;">📜 View History</button>
+    </div>
+
+    <!-- Displays the single most recent item by default -->
+    <div id="latest-snippet"></div>
+
+    <!-- Displays older history when expanded -->
+    <div id="text-history" class="text-history-list" style="display: none;"></div>
   </div>
 
   <h3>Shared Files</h3>

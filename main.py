@@ -4,7 +4,8 @@ from fastapi.staticfiles import StaticFiles
 
 from utils.constants import PORT
 from utils.websocket import ConnectionManager
-from utils.storage import list_shared_files, save_upload_file, get_base_path, delete_shared_file, get_shared_text, set_shared_text
+from utils.storage import (list_shared_files, save_upload_file, get_base_path, delete_shared_file, get_shared_text_history,
+                           add_shared_text, clear_shared_text_history, delete_shared_text)
 from utils.network import get_local_ip, gen_qr_bytes
 from utils.schemas import TextPayload
 
@@ -70,11 +71,32 @@ async def delete_file(filename: str) -> dict:
     return {"filename": filename, "status": "deleted successfully"}
 
 @app.get("/text")
-async def read_text() -> dict:
-    return {"text": get_shared_text()}
+async def read_text_history() -> dict:
+    """Gets the text history."""
+    return {"history": get_shared_text_history()}
 
 @app.post("/text")
-async def update_text(payload: TextPayload) -> dict:
-    set_shared_text(payload.text)
-    await manager.broadcast("text_updated")
+async def create_text(payload: TextPayload) -> dict:
+    """Adds a text snippet."""
+    if not payload.text.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="text cannot be empty")
+
+    add_shared_text(payload.text)
+    await manager.broadcast("text_added")
+    return {"status": "success"}
+
+@app.delete("/text")
+async def clear_text_history() -> dict:
+    """Clears all shared text history."""
+    clear_shared_text_history()
+    await manager.broadcast("text_deleted")
+    return {"status": "success"}
+
+@app.delete("/text/{text_id}")
+async def remove_text(text_id: str) -> dict:
+    """Deletes a text entry."""
+    if not delete_shared_text(text_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="entry not found")
+
+    await manager.broadcast("text_deleted")
     return {"status": "success"}

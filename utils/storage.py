@@ -1,6 +1,11 @@
 import shutil
+import json
+import uuid
 from pathlib import Path
 from fastapi import UploadFile
+from datetime import datetime
+
+
 from utils.constants import (DATA_DIR_PATH, UPLOAD_DIR_PATH, SHARED_TEXT_FILENAME)
 
 UPLOAD_DIR = Path(UPLOAD_DIR_PATH)
@@ -35,13 +40,49 @@ def delete_shared_file(filename: str) -> bool:
         return True
     return False
 
-def get_shared_text() -> str:
-    """Reads the current shared text snippet."""
+def get_shared_text_history() -> list[dict]:
+    """Reads all shared text entries from JSON storage."""
     if SHARED_TEXT_FILE.exists():
-        return SHARED_TEXT_FILE.read_text(encoding="utf-8")
-    return ""
+        try:
+            return json.loads(SHARED_TEXT_FILE.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return []
+    return []
 
-def set_shared_text(text: str) -> str:
-    """Saves a new shared text snippet."""
-    SHARED_TEXT_FILE.write_text(text, encoding="utf-8")
-    return text
+def add_shared_text(text: str) -> dict:
+    """Appends a new text snippet to history, capping the list at 20 items"""
+    history = get_shared_text_history()
+
+    new_entry = {
+        "id": str(uuid.uuid4())[:8],
+        "text": text,
+        "timestamp": datetime.now().strftime("%H:%M"),
+    }
+
+    history.insert(0, new_entry)
+    history = history[:20]
+
+    SHARED_TEXT_FILE.write_text(
+        json.dumps(history, indent=2),
+        encoding="utf-8"
+    )
+    return new_entry
+
+def clear_shared_text_history() -> bool:
+    """Clears all shared text entries from storage."""
+    SHARED_TEXT_FILE.write_text("[]", encoding="utf-8")
+    return True
+
+def delete_shared_text(text_id: str) -> bool:
+    """Deletes a specific text entry by ID."""
+    history = get_shared_text_history()
+    filtered_history = [item for item in history if item["id"] != text_id]
+
+    if len(filtered_history) == len(history):
+        return False
+
+    SHARED_TEXT_FILE.write_text(
+        json.dumps(filtered_history, indent=2),
+        encoding="utf-8"
+    )
+    return True
