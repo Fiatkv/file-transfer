@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, status, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from utils.constants import PORT
 from utils.websocket import ConnectionManager
@@ -9,6 +10,8 @@ from utils.schemas import TextPayload
 
 app = FastAPI()
 manager = ConnectionManager()
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 def read_index() -> dict:
