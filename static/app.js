@@ -26,8 +26,26 @@ async function uploadFile(file) {
   if (!file) return;
   const formData = new FormData();
   formData.append('file', file);
+  formData.append('sender', getDeviceName());
 
   await fetch('/files', { method: 'POST', body: formData });
+}
+
+async function loadFiles() {
+  const res = await fetch('/files');
+  const data = await res.json();
+  fileList.innerHTML = data.files.map(item => `
+    <li>
+      <div class="file-info">
+        <span class="file-name">${escapeHtml(item.filename)}</span>
+        <span class="file-meta">From <strong>${escapeHtml(item.sender)}</strong> • ${item.timestamp}</span>
+      </div>
+      <div class="actions">
+        <a href="/files/${encodeURIComponent(item.filename)}" download>Download</a>
+        <button class="delete-btn" onclick="deleteFile('${item.filename.replace(/'/g, "\\'")}')">Delete</button>
+      </div>
+    </li>
+  `).join('');
 }
 
 async function deleteFile(filename) {
@@ -37,20 +55,6 @@ async function deleteFile(filename) {
   if (!res.ok) {
     alert('Failed to delete file.');
   }
-}
-
-async function loadFiles() {
-  const res = await fetch('/files');
-  const data = await res.json();
-  fileList.innerHTML = data.files.map(name => `
-    <li>
-      <span>${name}</span>
-      <div class="actions">
-        <a href="/files/${encodeURIComponent(name)}" download>Download</a>
-        <button class="delete-btn" onclick="deleteFile('${name.replace(/'/g, "\\'")}')">Delete</button>
-      </div>
-    </li>
-  `).join('');
 }
 
 async function loadText() {
@@ -72,7 +76,6 @@ async function loadText() {
 
   clearAllBtn.style.display = 'inline-block';
 
-  // 1. Render latest snippet with sender name
   const latest = data.history[0];
   const latestSender = latest.sender || 'Unknown Device';
   latestContainer.innerHTML = `
@@ -88,7 +91,6 @@ async function loadText() {
     </div>
   `;
 
-  // 2. Render older history entries with sender names
   const olderEntries = data.history.slice(1);
   if (olderEntries.length > 0) {
     toggleBtn.style.display = 'inline-block';
@@ -128,26 +130,10 @@ function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// Auto-detect or retrieve custom device nickname
 function getDeviceName() {
   let name = localStorage.getItem('device_nickname');
   if (name) return name;
 
-  const ua = navigator.userAgent;
-  if (/iPhone|iPad|iPod/.test(ua)) name = "iPhone";
-  else if (/Android/.test(ua)) name = "Android Device";
-  else if (/Macintosh/.test(ua)) name = "Mac";
-  else if (/Windows/.test(ua)) name = "Windows PC";
-  else name = "Unknown Device";
-
-  return name;
-}
-
-function getDeviceName() {
-  let name = localStorage.getItem('device_nickname');
-  if (name) return name;
-
-  // Auto-detect browser/OS if no custom nickname is set
   const ua = navigator.userAgent;
   if (/iPhone|iPad|iPod/.test(ua)) name = "iPhone";
   else if (/Android/.test(ua)) name = "Android";
@@ -159,8 +145,7 @@ function getDeviceName() {
 }
 
 function initDeviceName() {
-  const name = getDeviceName();
-  deviceNameInput.value = name;
+  deviceNameInput.value = getDeviceName();
 }
 
 function saveDeviceName() {
@@ -208,7 +193,6 @@ async function clearAllSnippets() {
   }
 }
 
-// Synchronous DOM read and mobile copy handler
 function copySnippet(btnElement) {
   const card = btnElement.closest('.text-card');
   if (!card) return;
@@ -216,7 +200,6 @@ function copySnippet(btnElement) {
   const text = card.querySelector('.text-card-body').innerText;
   if (!text) return;
 
-  // Try modern Clipboard API if supported and HTTPS/localhost
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text).then(() => {
       alert('Copied to clipboard!');
@@ -231,7 +214,6 @@ function copySnippet(btnElement) {
 function fallbackCopy(text) {
   const textArea = document.createElement('textarea');
   textArea.value = text;
-  // Position offscreen without hiding display to keep iOS selection active
   textArea.style.position = 'fixed';
   textArea.style.left = '-9999px';
   textArea.style.top = '0';
@@ -239,7 +221,7 @@ function fallbackCopy(text) {
   
   textArea.focus();
   textArea.select();
-  textArea.setSelectionRange(0, 99999); // Critical for iOS Safari
+  textArea.setSelectionRange(0, 99999);
 
   try {
     const successful = document.execCommand('copy');
@@ -255,7 +237,6 @@ function fallbackCopy(text) {
   }
 }
 
-// WebSocket Connection Management
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const wsUrl = `${protocol}//${window.location.host}/ws`;
 let ws;
@@ -277,7 +258,6 @@ function connectWebSocket() {
   };
 }
 
-// Initializations
 loadFiles();
 loadText();
 connectWebSocket();

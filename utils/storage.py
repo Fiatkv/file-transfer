@@ -1,46 +1,83 @@
-import shutil
 import json
+import shutil
 import uuid
+
+from datetime import datetime
 from pathlib import Path
 from fastapi import UploadFile
-from datetime import datetime
 
-from utils.constants import (DATA_DIR_PATH, UPLOAD_DIR_PATH, SHARED_TEXT_FILENAME, DEFAULT_SENDER)
+from utils.constants import DATA_DIR_PATH, DEFAULT_SENDER, FILES_METADATA_FILENAME, SHARED_TEXT_FILENAME, UPLOAD_DIR_PATH
 
 UPLOAD_DIR = Path(UPLOAD_DIR_PATH)
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-DATA_DIR_PATH = Path(DATA_DIR_PATH)
-DATA_DIR_PATH.mkdir(exist_ok=True)
+DATA_DIR = Path(DATA_DIR_PATH)
+DATA_DIR.mkdir(exist_ok=True)
 
-SHARED_TEXT_FILE = DATA_DIR_PATH / SHARED_TEXT_FILENAME
+FILES_METADATA_FILE = DATA_DIR / FILES_METADATA_FILENAME
+SHARED_TEXT_FILE = DATA_DIR / SHARED_TEXT_FILENAME
 
 def get_base_path(filename: str) -> Path:
-    """Strips directory traversal sequences and returns an absolute file target path."""
-    base_name = Path(filename).name
-    return UPLOAD_DIR / base_name
+    """Strips directory traversal sequences to return a safe file path."""
+    return UPLOAD_DIR / Path(filename).name
 
-def list_shared_files() -> list[str]:
-    """Returns a list of all filenames stored in the shared files directory."""
-    return [file.name for file in UPLOAD_DIR.iterdir() if file.is_file()]
+def get_files_metadata() -> dict[str, dict]:
+    if FILES_METADATA_FILE.exists():
+        try:
+            return json.loads(FILES_METADATA_FILE.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return {}
+    return {}
 
-def save_upload_file(file: UploadFile) -> str:
-    """Streams an incoming UploadFile to the storage directory in chunks."""
+def save_files_metadata(metadata: dict[str, dict]) -> None:
+    FILES_METADATA_FILE.write_text(
+        json.dumps(metadata, indent=2), encoding="utf-8"
+    )
+
+def list_shared_files_info() -> list[dict]:
+    metadata = get_files_metadata()
+    files = []
+
+    for file in UPLOAD_DIR.iterdir():
+        if file.is_file():
+            file_meta = metadata.get(file.name, {})
+            files.append(
+                {
+                    "filename": file.name,
+                    "sender": file_meta.get("sender", DEFAULT_SENDER),
+                    "timestamp": file_meta.get("timestamp", "--:--"),
+                }
+            )
+    return files
+
+def save_upload_file(file: UploadFile, sender: str = DEFAULT_SENDER) -> str:
     target_path = get_base_path(file.filename)
     with target_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+
+    metadata = get_files_metadata()
+    metadata[target_path.name] = {
+        "sender": sender,
+        "timestamp": datetime.now().strftime("%H:%M"),
+    }
+    save_files_metadata(metadata)
+
     return target_path.name
 
 def delete_shared_file(filename: str) -> bool:
-    """Deletes a file from the shared files directory (if it exists)."""
     file_path = get_base_path(filename)
     if file_path.exists() and file_path.is_file():
         file_path.unlink()
+
+        metadata = get_files_metadata()
+        if filename in metadata:
+            del metadata[filename]
+            save_files_metadata(metadata)
+
         return True
     return False
 
 def get_shared_text_history() -> list[dict]:
-    """Reads all shared text entries from JSON storage."""
     if SHARED_TEXT_FILE.exists():
         try:
             return json.loads(SHARED_TEXT_FILE.read_text(encoding="utf-8"))
@@ -49,7 +86,6 @@ def get_shared_text_history() -> list[dict]:
     return []
 
 def add_shared_text(text: str, sender: str = DEFAULT_SENDER) -> dict:
-    """Appends a new text snippet with sender metadata to history."""
     history = get_shared_text_history()
 
     new_entry = {
@@ -63,18 +99,15 @@ def add_shared_text(text: str, sender: str = DEFAULT_SENDER) -> dict:
     history = history[:20]
 
     SHARED_TEXT_FILE.write_text(
-        json.dumps(history, indent=2),
-        encoding="utf-8"
+        json.dumps(history, indent=2), encoding="utf-8"
     )
     return new_entry
 
 def clear_shared_text_history() -> bool:
-    """Clears all shared text entries from storage."""
     SHARED_TEXT_FILE.write_text("[]", encoding="utf-8")
     return True
 
 def delete_shared_text(text_id: str) -> bool:
-    """Deletes a specific text entry by ID."""
     history = get_shared_text_history()
     filtered_history = [item for item in history if item["id"] != text_id]
 
@@ -82,7 +115,6 @@ def delete_shared_text(text_id: str) -> bool:
         return False
 
     SHARED_TEXT_FILE.write_text(
-        json.dumps(filtered_history, indent=2),
-        encoding="utf-8"
+        json.dumps(filtered_history, indent=2), encoding="utf-8"
     )
     return True
